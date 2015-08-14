@@ -46,3 +46,41 @@ function Add-Path {
     $env:PATH = [String]::Join(';', $Path)
   }
 }
+
+function Add-Variable {
+<#
+    .SYNOPSIS
+      Adds a Variable to the environment
+    .DESCRIPTION
+
+    .EXAMPLE
+      Add-Variable -Name:"asdf" -Value:$true
+  #>
+[CmdletBinding()]
+    param (
+        [Parameter(
+          Mandatory=$True,
+          ValueFromPipeline=$True,
+          ValueFromPipelineByPropertyName=$True,
+          HelpMessage='What variable would you like to add?')]
+        [string[]]$Name,
+        [Parameter(
+          Mandatory=$True,
+          ValueFromPipeline=$True,
+          ValueFromPipelineByPropertyName=$True,
+          HelpMessage='What value would you like to add?')]
+        [string[]]$Value,
+        [Parameter(
+          HelpMessage='Add this to the User environment? Default is Machine.')]
+        [switch]$User
+    )
+
+    $environment = "Machine"
+    if ($User){
+        $environment = "User"
+    }
+    [System.Environment]::SetEnvironmentVariable($Name, $Value, $environment)
+    
+    [System.Environment]::SetEnvironmentVariable($Name, $Value, "Process")
+}
+
