@@ -5,6 +5,8 @@ $Shell=$Host.UI.RawUI
 $title = $Shell.WindowTitle
 $Shell.WindowTitle = $title
 
+Write-Host "PROFILE SOURCE can be found @ https://raw.githubusercontent.com/clintcparker/PowerShellScripts/master/Profile.ps1"
+
 function Add-Path {
   <#
     .SYNOPSIS
