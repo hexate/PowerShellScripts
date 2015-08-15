@@ -1,5 +1,8 @@
 $moduleName = "Profile"
 
+
+$profileModulesArrayString = "PROFILE_MODULES_ARRAY"
+
 function Add-Path {
   <#
     .SYNOPSIS
@@ -27,7 +30,8 @@ function Add-Path {
   )
 
   PROCESS {
-    $Path = $env:PATH.Split(';')
+    $Path = Get-EnvironmentVariable("PATH").ToLower().Split(";")
+    $Directory = $Directory.ToLower()
 
     foreach ($dir in $Directory) {
       if ($Path -contains $dir) {
@@ -41,46 +45,162 @@ function Add-Path {
       }
     }
 
-    
-    [System.Environment]::SetEnvironmentVariable("PATH", [String]::Join(';', $Path), "Machine")
-    $env:PATH = [String]::Join(';', $Path)
+    $pathStr = [String]::Join(';', $Path)
+    Set-EnvironmentVariable "PATH" $pathStr -Global
   }
 }
 
-function Add-Variable {
-<#
-    .SYNOPSIS
-      Adds a Variable to the environment
-    .DESCRIPTION
-
-    .EXAMPLE
-      Add-Variable -Name:"asdf" -Value:$true
-  #>
-[CmdletBinding()]
-    param (
+function Set-EnvironmentVariable {
+    param(
         [Parameter(
-          Mandatory=$True,
-          ValueFromPipeline=$True,
-          ValueFromPipelineByPropertyName=$True,
-          HelpMessage='What variable would you like to add?')]
-        [string[]]$Name,
+            Mandatory=$True,
+            ValueFromPipeline=$True,
+            ValueFromPipelineByPropertyName=$True,
+            HelpMessage='What variable would you like to add?')]
+        [string]$Name,
         [Parameter(
-          Mandatory=$True,
-          ValueFromPipeline=$True,
-          ValueFromPipelineByPropertyName=$True,
-          HelpMessage='What value would you like to add?')]
-        [string[]]$Value,
+            Mandatory=$True,
+            ValueFromPipeline=$True,
+            ValueFromPipelineByPropertyName=$True,
+            HelpMessage='What value would you like to add?')]
+        [string]$Val,
+        
         [Parameter(
-          HelpMessage='Add this to the User environment? Default is Machine.')]
-        [switch]$User
+            ValueFromPipeline=$True,
+            ValueFromPipelineByPropertyName=$True,
+            HelpMessage='Add to the global environment?')]
+        [switch]$Global
     )
-
-    $environment = "Machine"
-    if ($User){
-        $environment = "User"
+    [System.Environment]::SetEnvironmentVariable($Name,$Val,"Process")
+    [System.Environment]::SetEnvironmentVariable($Name,$Val,"User")
+    if ($Global)
+    {
+        [System.Environment]::SetEnvironmentVariable($Name,$Val,"Machine")
     }
-    [System.Environment]::SetEnvironmentVariable($Name, $Value, $environment)
+}
+
+function Get-EnvironmentVariable {
+    param(
+        [Parameter(
+            Mandatory=$True,
+            ValueFromPipeline=$True,
+            ValueFromPipelineByPropertyName=$True,
+            HelpMessage='What variable would you like to add?')]
+        [string]$Name,
+        
+        [Parameter(
+            ValueFromPipeline=$True,
+            ValueFromPipelineByPropertyName=$True,
+            HelpMessage='Add to the global environment?')]
+        [switch]$Global
+    )
+    $val = [System.Environment]::GetEnvironmentVariable($Name,"Process")
+    if ($val -eq $null )
+    {
+        $val = [System.Environment]::GetEnvironmentVariable($Name,"User")
+        if ($val -eq $null )
+        {
+            $val = [System.Environment]::GetEnvironmentVariable($Name,"Machine")
+        } 
+    } 
+    return $val
+}
+
+function Remove-EnvironmentVariable {
+    param(
+        [Parameter(
+            Mandatory=$True,
+            ValueFromPipeline=$True,
+            ValueFromPipelineByPropertyName=$True,
+            HelpMessage='What variable would you like to add?')]
+        [string]$Name,
+        [Parameter(
+            ValueFromPipeline=$True,
+            ValueFromPipelineByPropertyName=$True,
+            HelpMessage='Add to the global environment?')]
+        [switch]$Global
+    )
+    [System.Environment]::SetEnvironmentVariable($Name,$null,"Process")
+    [System.Environment]::SetEnvironmentVariable($Name,$null,"User")
+    if ($Global)
+    {
+        [System.Environment]::SetEnvironmentVariable($Name,$null,"Machine")
+    }
+}
+
+
+function Import-ProfileModules {
+    $MyModuleArrayString = Get-EnvironmentVariable $profileModulesArrayString
+    if ($MyModuleArrayString -ne $null)
+    {
+        $MyModules = $MyModuleArrayString.Split(";")
+        foreach ($mod in $MyModules){
+            Import-Module $mod -Force -Global
+        }
+    }
+}
+
+function Register-ProfileModule {
+[CmdletBinding()]
+param(
+    [Parameter(
+      Mandatory=$True,
+      ValueFromPipeline=$True,
+      ValueFromPipelineByPropertyName=$True,
+      HelpMessage='What module would you like to add?')]
+    [string]$File
+)
     
-    [System.Environment]::SetEnvironmentVariable($Name, $Value, "Process")
+    $myfile = $File.ToLower()
+    if (Test-Path $myfile){
+        Import-Module $myfile -Force -Global
+
+        $MyModuleArrayString = Get-EnvironmentVariable $profileModulesArrayString
+        if ($MyModuleArrayString -eq $null)
+        {
+            $MyModuleArrayString = $myfile
+        } 
+        else 
+        {
+            [System.Collections.ArrayList]$MyModules = $MyModuleArrayString.Split(";")
+            if (-Not $MyModules.Contains("$myfile")){
+                $MyModules.Add($myfile)
+                $MyModuleArrayString = [System.String]::Join(";",$MyModules)
+            }
+        }
+        
+        Set-EnvironmentVariable $profileModulesArrayString $MyModuleArrayString 
+    }
+}
+
+function Unregister-ProfileModule {
+    [CmdletBinding()]
+    param(
+        [Parameter(
+          Mandatory=$True,
+          ValueFromPipeline=$True,
+          ValueFromPipelineByPropertyName=$True,
+          HelpMessage='What module would you like to remove?')]
+        [string]$File
+    )
+    
+    $myfile = $File.ToLower()
+    $MyModuleArrayString = Get-EnvironmentVariable($profileModulesArrayString)
+    if ($MyModuleArrayString -ne $null)
+    {
+        [System.Collections.ArrayList]$MyModules = $MyModuleArrayString.Split(";")
+        if (-Not $MyModules.Contains("$myfile")){
+            $MyModules.Remove("$myfile")
+            $MyModuleArrayString = [System.String]::Join(";",$MyModules)
+        }
+    }
+    
+    if ($MyModuleArrayString -eq "")
+    {
+        $MyModuleArrayString = $null
+    }
+    Set-EnvironmentVariable $profileModulesArrayString $MyModuleArrayString 
+
+    Get-Module | ? {$_.path.ToLower() -eq "$myfile"} | Remove-Module
 }
 
