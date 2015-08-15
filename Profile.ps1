@@ -22,3 +22,5 @@ if (-Not (Test-Path $Profile_Module))
     Invoke-WebRequest "https://raw.githubusercontent.com/clintcparker/PowerShellScripts/master/Profile.psm1" -OutFile $Profile_Module
 }
 Import-Module $Profile_Module -Force
+
+Import-ProfileModules
