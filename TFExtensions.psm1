@@ -1,6 +1,9 @@
 $moduleName = "TF-Extensions"
 
-function Setup-Workspace {
+
+$tfsUrlString = "TFS_URL"
+
+function Initialize-Workspace {
     [CmdletBinding()]
   param (
         [Parameter(
@@ -23,9 +26,8 @@ function Setup-Workspace {
       HelpMessage='Workspace Name')]
     [string]$Workspace_Name
     )
-        tf workspace /new /noprompt /collection:$env:TFS_URL $Workspace_Name
-        tf workfold /map $TFS_Directory $Local_Directory /workspace:$Workspace_Name
-        tf workfold /unmap $/ /collection:$env:TFS_URL /workspace:$Workspace_Name
+        $newWS = New-Workspace -tfsUrl
+        tf workfold /map $TFS_Directory $Local_Directory /workspace:$newWS
         tf get $Local_Directory /remap /recursive
 }
 function New-Workspace{
@@ -82,9 +84,13 @@ New-Workspace -tfsUrl:https://tfs.mycompany.com/tfs -newWorkspaceName:MY_NEW_WOR
 #>
 
     param(
-        [string]$tfsUrl = "$env:TFS_URL",
+        [string]$tfsUrl,
         [string]$newWorkspaceName = "$env:COMPUTERNAME"
     )
+
+    if($tfsUrl -eq "" -or $tfsUrl -eq $null){
+        $tfsUrl = Get-EnvironmentVariable $tfsUrlString
+    }
 
     function New-WorkspaceFromTemplate {
         param(
@@ -211,6 +217,8 @@ New-Workspace -tfsUrl:https://tfs.mycompany.com/tfs -newWorkspaceName:MY_NEW_WOR
     New-WorkspaceFromTemplate -newName:$newWorkspaceName -templateName:$template
    
     Write-Host "Finished"
+
+    return $newWorkspaceName
 }
 
 
