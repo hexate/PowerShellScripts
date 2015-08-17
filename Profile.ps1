@@ -14,6 +14,8 @@ PROFILE SOURCE can be found @ https://raw.githubusercontent.com/clintcparker/Pow
 
 Run `Get-Command -Module Profile` to see all profile functions.
 
+All modules in $Profile_Path\Modules will be automatically loaded
+
 "
 
 
