@@ -1,8 +1,5 @@
 $moduleName = "Profile"
 
-
-$profileModulesArrayString = "PROFILE_MODULES_ARRAY"
-
 function Add-Path {
   <#
     .SYNOPSIS
@@ -130,77 +127,29 @@ function Remove-EnvironmentVariable {
 
 
 function Import-ProfileModules {
-    $MyModuleArrayString = Get-EnvironmentVariable $profileModulesArrayString
-    if ($MyModuleArrayString -ne $null)
-    {
-        $MyModules = $MyModuleArrayString.Split(";")
-        foreach ($mod in $MyModules){
-            Import-Module $mod -Force -Global
-        }
+    $profileModPath = "$Profile_Path\Modules"
+    if (-Not(Test-Path $profileModPath)){
+        mkdir $profileModPath
     }
+    ls "$Profile_Path\Modules\*.psm1" -Recurse | Import-Module -Force -Global
 }
 
-function Register-ProfileModule {
-[CmdletBinding()]
-param(
-    [Parameter(
-      Mandatory=$True,
-      ValueFromPipeline=$True,
-      ValueFromPipelineByPropertyName=$True,
-      HelpMessage='What module would you like to add?')]
-    [string]$File
-)
-    
-    $myfile = $File.ToLower()
-    if (Test-Path $myfile){
-        Import-Module $myfile -Force -Global
-
-        $MyModuleArrayString = Get-EnvironmentVariable $profileModulesArrayString
-        if ($MyModuleArrayString -eq $null)
-        {
-            $MyModuleArrayString = $myfile
-        } 
-        else 
-        {
-            [System.Collections.ArrayList]$MyModules = $MyModuleArrayString.Split(";")
-            if (-Not $MyModules.Contains("$myfile")){
-                $MyModules.Add($myfile)
-                $MyModuleArrayString = [System.String]::Join(";",$MyModules)
-            }
-        }
-        
-        Set-EnvironmentVariable $profileModulesArrayString $MyModuleArrayString 
-    }
-}
-
-function Unregister-ProfileModule {
+function Get-Memory{
     [CmdletBinding()]
     param(
         [Parameter(
           Mandatory=$True,
           ValueFromPipeline=$True,
           ValueFromPipelineByPropertyName=$True,
-          HelpMessage='What module would you like to remove?')]
-        [string]$File
+          HelpMessage='What process would you like to inspect?')]
+        [string]$Name
     )
-    
-    $myfile = $File.ToLower()
-    $MyModuleArrayString = Get-EnvironmentVariable($profileModulesArrayString)
-    if ($MyModuleArrayString -ne $null)
-    {
-        [System.Collections.ArrayList]$MyModules = $MyModuleArrayString.Split(";")
-        if (-Not $MyModules.Contains("$myfile")){
-            $MyModules.Remove("$myfile")
-            $MyModuleArrayString = [System.String]::Join(";",$MyModules)
-        }
-    }
-    
-    if ($MyModuleArrayString -eq "")
-    {
-        $MyModuleArrayString = $null
-    }
-    Set-EnvironmentVariable $profileModulesArrayString $MyModuleArrayString 
 
-    Get-Module | ? {$_.path.ToLower() -eq "$myfile"} | Remove-Module
+
+    
+    $procs = $(Get-Process | ? {$_.ProcessName -eq $Name})
+    if ($procs -ne $null){
+        $GBMemory = $($procs | Measure-Object -Sum PM).Sum / 1gb
+    }
+    return $GBMemory
 }
-
